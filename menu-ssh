@@ -1,0 +1,86 @@
+#!/bin/bash
+
+# Command-driven menu-ssh tanpa input interaktif
+
+function buat_akun() {
+  username="$1"
+  password="$2"
+  masa="$3"
+  batas="$4"
+
+  if [ -z "$username" ] || [ -z "$password" ] || [ -z "$masa" ] || [ -z "$batas" ]; then
+    echo "Usage: $0 create <username> <password> <masa_hari> <batas_sesi>"
+    exit 1
+  fi
+
+  if id "$username" &>/dev/null; then
+    echo "User '$username' sudah ada, batal membuat."
+    exit 1
+  fi
+
+  useradd -M -s /bin/false -e $(date -d "+$masa days" +%F) "$username"
+  echo "$username:$password" | chpasswd
+
+  mkdir -p /etc/ws
+  echo "$username $batas" >> /etc/ws/user_limit.conf
+  echo "User '$username' berhasil dibuat dengan masa berlaku $masa hari dan batas sesi $batas."
+}
+
+function list_akun() {
+  echo "Daftar user dan masa berlaku:"
+  cut -d: -f1 /etc/passwd | while read user; do
+    if [ "$user" != "root" ]; then
+      expire=$(chage -l "$user" | grep 'Account expires' | cut -d: -f2 | xargs)
+      echo "$user - Expire: $expire"
+    fi
+  done
+  echo "Batas sesi IP (koneksi) per user:"
+  cat /etc/ws/user_limit.conf 2>/dev/null || echo "Belum ada batas sesi yang tersimpan."
+}
+
+function hapus_akun() {
+  username="$1"
+  if [ -z "$username" ]; then
+    echo "Usage: $0 delete <username>"
+    exit 1
+  fi
+
+  if ! id "$username" &>/dev/null; then
+    echo "User '$username' tidak ditemukan."
+    exit 1
+  fi
+
+  userdel "$username"
+  sed -i "/^$username /d" /etc/ws/user_limit.conf
+  echo "User '$username' berhasil dihapus."
+}
+
+function uninstall() {
+  echo "Menghapus layanan dan file konfigurasi..."
+  systemctl stop ws.service
+  systemctl disable ws.service
+  rm -f /etc/systemd/system/ws.service
+  systemctl daemon-reload
+  rm -rf /etc/ws
+  rm -f /usr/bin/ws
+  echo "Uninstall selesai."
+}
+
+case "$1" in
+  create)
+    buat_akun "$2" "$3" "$4" "$5"
+    ;;
+  list)
+    list_akun
+    ;;
+  delete)
+    hapus_akun "$2"
+    ;;
+  uninstall)
+    uninstall
+    ;;
+  *)
+    echo "Usage: $0 {create <username> <password> <masa_hari> <batas_sesi>|list|delete <username>|uninstall}"
+    exit 1
+    ;;
+esac
