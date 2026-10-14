@@ -12,6 +12,7 @@ This repository contains an improved automated setup script for the Ws-Epro WebS
 - Configures Stunnel on port 4443 with a self-signed certificate.
 - Installs and configures HAProxy to proxy ports 80 -> 8080 and 443 -> 4443 with SSL termination.
 - Enables and starts all relevant services automatically.
+- Provides `menu-ssh` command for managing user accounts with expiration and IP session limits.
 
 ## Installation
 
@@ -25,7 +26,22 @@ sudo ./setup-improved.sh
 
 ## Usage
 
-- Manage user accounts using the `menu-ssh` command available after installation.
+- Use `menu-ssh` command to manage SSH proxy user accounts:
+
+```bash
+# Create user
+menu-ssh create <username> <password> <expiration_days> <ip_session_limit>
+
+# List users
+menu-ssh list
+
+# Delete user
+menu-ssh delete <username>
+
+# Uninstall proxy
+menu-ssh uninstall
+```
+
 - Test the WebSocket SSH proxy on ports 80 (WS) and 443 (WSS).
 
 ## Notes
